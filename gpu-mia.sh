@@ -1,36 +1,37 @@
 #!/bin/bash
 
 # Use the variable for the job name and log/error files
-#$ -N pythia-neighbourhood-mia
-#$ -o /exports/eddie/scratch/s2605274/job_runs/EDDIE-pythia-2.8b_$JOB_ID.log
-#$ -e /exports/eddie/scratch/s2605274/job_runs/EDDIE-pythia-2.8b_$JOB_ID.err
+#$ -N mia
+#$ -o /exports/eddie/scratch/s2558433/job_runs/mia_$JOB_ID.log
+#$ -e /exports/eddie/scratch/s2558433/job_runs/mia_$JOB_ID.err
 #$ -cwd
-#$ -P lel_hcrc_cstr_students
 #$ -q gpu
 #$ -pe gpu-a100 1
 #$ -l h_vmem=500G
 #$ -l h_rt=24:00:00
-#$ -m bea -M s2605274@ed.ac.uk 
+#$ -m bea -M s2558433@ed.ac.uk 
 
-#Make sure these are in your eddie scratch space
-export HF_HOME="/exports/eddie/scratch/s2605274/.cache/huggingface_cache"
-export TRANSFORMERS_CACHE="/exports/eddie/scratch/s2605274/.cache/huggingface_cache/transformers"
-export HF_DATASETS_CACHE="/exports/eddie/scratch/s2605274/.cache/huggingface_cache/datasets"
-export PIP_CACHE_DIR="/exports/eddie/scratch/s2605274/.cache/pip"
-export CONDA_PKGS_DIRS="/exports/eddie/scratch/s2605274/.cache/conda_pkgs"
+export HF_HOME="/exports/eddie/scratch/s2558433/.cache/huggingface_cache"
+export TRANSFORMERS_CACHE="/exports/eddie/scratch/s2558433/.cache/huggingface_cache/transformers"
+export HF_DATASETS_CACHE="/exports/eddie/scratch/s2558433/.cache/huggingface_cache/datasets"
+export PIP_CACHE_DIR="/exports/eddie/scratch/s2558433/.cache/pip"
+export CONDA_PKGS_DIRS="/exports/eddie/scratch/s2558433/.cache/conda_pkgs"
 
-source /exports/eddie/scratch/s2605274/miniconda3/etc/profile.d/conda.sh
+export CXXFLAGS="-std=c99"
+export CFLAGS="-std=c99"
+export TOKENIZERS_PARALLELISM=false
 
-cd /exports/eddie/scratch/s2605274/besties_mia/
-#conda remove --name extract --all
+. /etc/profile.d/modules.sh
+module unload cuda
 
-# conda create -n mia-n python=3.9 
+module load cuda/12.1.1
+#qlogin -q gpu -pe gpu-a100 1 -l h_vmem=500G -l h_rt=24:00:00
 
-conda activate mia-try
+source /exports/eddie/scratch/s2558433/miniconda3/etc/profile.d/conda.sh
+module load anaconda
 
-pip install -r requirements.txt
-# Run the main script
-python run_mia_unified.py --output_name unified_mia --base_model_name EleutherAI/pythia-2.8b --mask_filling_model_name t5-3b --n_perturbation_list 25 --n_samples 2000 --pct_words_masked 0.3 --span_length 2 --cache_dir cache --dataset_member swa --dataset_member_key text --dataset_nonmember swa-new --ref_model gpt2-xl  --max_length 2000
-#python main.py --N 1000 --batch-size 10 --model1 EleutherAI/pythia-2.8b --model2 EleutherAI/pythia-410m --cor
+cd /exports/eddie/scratch/s2558433/under/
+
+python run_mia_unified.py --output_name unified_mia --base_model_name EleutherAI/pythia-2.8b --mask_filling_model_name t5-3b --n_perturbation_list 25 --n_samples 2000 --pct_words_masked 0.3 --span_length 2 --cache_dir cache --dataset_member wiki --dataset_member_key text --dataset_nonmember wmt  --max_length 2000
 
 conda deactivate 

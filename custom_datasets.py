@@ -112,9 +112,18 @@ def load_english(cache_dir):
     return load_language('en', cache_dir)
 
 
+# def load(name, cache_dir, **kwargs):
+#     if name in DATASETS:
+#         load_fn = globals()[f'load_{name}']
+#         return load_fn(cache_dir=cache_dir, **kwargs)
+#     else:
+#         raise ValueError(f'Unknown dataset {name}')
+
 def load(name, cache_dir, **kwargs):
-    if name in DATASETS:
-        load_fn = globals()[f'load_{name}']
-        return load_fn(cache_dir=cache_dir, **kwargs)
+    file_path = os.path.join(cache_dir, f'{name}.txt')
+    if os.path.exists(file_path):
+        print(f"Loading dataset from {file_path}")
+        return load_text_file(file_path)
     else:
         raise ValueError(f'Unknown dataset {name}')
+

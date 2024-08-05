@@ -814,67 +814,101 @@ def parse_swahili(path):
     return file_content
 #edit for own dataset implementation.
 
-def generate_data(dataset,key,train=True):
+def parse_splitted(path, subset='default', max_examples=100000, start_seed=42):
+    """
+    This is for parsing the PileSplitted dataset.
+    """
+    print("Streaming the splitted pile")
+    
+    all_texts = ""
+    examples_processed = 0
+
+    print(f"Subset: {subset}")
+    print(f"Path: {path}")
+
+    # Load the dataset subset with streaming enabled
+    dataset = load_dataset(path, subset, split="train", streaming=True)
+
+    shuffled_dataset = dataset.shuffle(seed=start_seed)
+    dataset_head = shuffled_dataset.skip(0).take(max_examples)
+
+    for text in dataset_head:
+        # Replace newline characters with spaces
+        all_texts += text['text'].replace('\n', ' ')
+
+    print("Completed parsing")
+
+    return all_texts
+
+def parse_wmt_splitted(path, split_set='train', start_seed=33):
+    """
+    This is for getting data from KaiNylund/WMT-year-splits
+    unseen data for the model serving as a base for perplexity
+    """
+    print("Streaming the WMT splitted dataset")
+
+    all_texts = ""
+
+    # Load the dataset split with streaming enabled
+    dataset = load_dataset(path, split=split_set, streaming=True)
+    
+    shuffled_dataset = dataset.shuffle(seed=start_seed)
+    dataset_head = shuffled_dataset.skip(0).take(100000)
+
+    for text in dataset_head:
+        # Replace newline characters with spaces
+        all_texts += text['text'].replace('\n', ' ')
+
+    print("Completed parsing")
+    
+    return all_texts
+
+def generate_data(dataset, key, train=True):
     # load data
     data_split = 'train' if train else 'test'
-    if dataset =='swa':
-        data= parse_swahili('swa_sample.txt')
-    elif dataset =='swa-new':
-        data= parse_swahili('swa_perplex.txt')
+    
+    if dataset == 'swa':
+        data = parse_swahili('swa_sample.txt')
+    elif dataset == 'swa-new':
+        data = parse_swahili('swa_perplex.txt')
     elif dataset == 'eng':
-        #data_files = "https://www.cs.cmu.edu/~enron/enron_mail_20150507.tar.gz"
-        #data_files="/home/niloofar/projects/enron_mail_20150507.tar.gz"
-        #data_files ="/home/niloofar/projects/maildir"
-        #data = datasets.load_dataset("json", data_files=data_files, split="train", cache_dir=cache_dir)[key]
-        #data = datasets.load_dataset("json",data_files=data_files, split='train', cache_dir=cache_dir)[key]https://the-eye.eu/public/AI/pile/train/00.jsonl.zst"
-        data= parse_pilecorpus('ArmelR/the-pile-splitted')
-        # data = datasets.load_dataset("json", data_files="/trunk/datasets/niloofar/pile/00.jsonl.zst",  split=f"{data_split}[:10000]")[key]
-    # elif dataset == 'the_pile' and data_split=='test':
-    #     print("test")
-    #     data = datasets.load_dataset("json", data_files="/trunk/datasets/niloofar/pile/test.jsonl.zst",split=f"train[:10000]")[key]
-    # else:
-    #     data = datasets.load_dataset(dataset, split=f'train[:10000]', cache_dir=cache_dir)[key]
+        data = parse_pilecorpus('ArmelR/the-pile-splitted')
+    elif dataset == 'wmt':
+        data = parse_wmt_splitted('KaiNylund/WMT-year-splits', split_set=data_split)
+    elif dataset == 'pile':
+        data = parse_splitted('ArmelR/the-pile-splitted', subset='default')
+    else:
+        raise ValueError(f"Unsupported dataset: {dataset}")
 
-    # get unique examples, strip whitespace, and remove newlines
-    # then take just the long examples, shuffle, take the first 5,000 to tokenize to save time
-    # then take just the examples that are <= 512 tokens (for the mask model)
-    # then generate n_samples samples
-
-    # remove duplicates from the data
-    # data = list(dict.fromkeys(data))  # deterministic, as opposed to set()
-
-    # strip whitespace around each example
-    data = [x.strip() for x in data]
-
-    # remove newlines from each example
+    # Clean and preprocess data
+    data = [x.strip() for x in data.split('\n') if x.strip()]  # Split by newline and remove empty lines
     data = [strip_newlines(x) for x in data]
 
-    # try to keep only examples with > 100 words
-    #if dataset in ['writing', 'squad', 'xsum']:
+    # Filter long examples
     long_data = [x for x in data if len(x.split()) > 100]
-    if len(long_data) > 0:
-        data = long_data
+    data = long_data if long_data else data  # use long_data if available
 
-    
-    not_too_long_data = [x for x in data if len(x.split()) < args.max_length]
-    if len(not_too_long_data) > 0:
-            data = not_too_long_data
+    # Filter examples by length
+    if hasattr(args, 'max_length'):  # Ensure `args` is available and has `max_length`
+        data = [x for x in data if len(x.split()) < args.max_length]
 
     random.seed(0)
     random.shuffle(data)
 
+    # Limit to 5,000 examples
     data = data[:5_000]
 
-    # keep only examples with <= 512 tokens according to mask_tokenizer
-    # this step has the extra effect of removing examples with low-quality/garbage content
+    # Tokenization and final filtering
     tokenized_data = preproc_tokenizer(data)
     data = [x for x, y in zip(data, tokenized_data["input_ids"]) if len(y) <= 512]
 
-    # print stats about remainining data
+    # Print stats about remaining data
     print(f"Total number of samples: {len(data)}")
-    print(f"Average number of words: {np.mean([len(x.split()) for x in data])}")
+    if len(data) > 0:
+        avg_words = np.mean([len(x.split()) for x in data])
+        print(f"Average number of words: {avg_words}")
 
-    return data 
+    return data
 
     #return generate_samples(data[:n_samples], batch_size=batch_size)
 

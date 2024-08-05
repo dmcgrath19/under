@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Use the variable for the job name and log/error files
-#$ -N mia
-#$ -o /exports/eddie/scratch/s2558433/job_runs/mia_$JOB_ID.log
-#$ -e /exports/eddie/scratch/s2558433/job_runs/mia_$JOB_ID.err
+#$ -N rkvw-s
+#$ -o /exports/eddie/scratch/s2558433/job_runs/py-input-$JOB_ID.log
+#$ -e /exports/eddie/scratch/s2558433/job_runs/py-input-$JOB_ID.err
 #$ -cwd
 #$ -q gpu
 #$ -pe gpu-a100 1
-#$ -l h_vmem=500G
+#$ -l h_vmem=300G
 #$ -l h_rt=24:00:00
 #$ -m bea -M s2558433@ed.ac.uk 
 
